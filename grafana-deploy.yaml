@@ -1,0 +1,83 @@
+# kubectl apply -f grafana-deploy.yaml
+# kubectl port-forward svc/grafana 8080:3000
+# Open: http://localhost:8080/explore
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Admin
+            - name: GF_DIAGNOSTICS_PROFILING_ADDR
+              value: 0.0.0.0
+            - name: GF_DIAGNOSTICS_PROFILING_ENABLED
+              value: "true"
+            - name: GF_DIAGNOSTICS_PROFILING_PORT
+              value: "6060"
+            - name: GF_FEATURE_TOGGLES_ENABLE
+              value: flameGraph
+          image: grafana/grafana:main
+          name: grafana
+          ports:
+            - containerPort: 3000
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/grafana/provisioning/datasources/
+              name: grafana
+      restartPolicy: Always
+      volumes:
+        - name: grafana
+          configMap:
+            name: grafana
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  ports:
+    - name: "3000"
+      port: 3000
+      targetPort: 3000
+    - name: "6060"
+      port: 6060
+      targetPort: 6060
+  selector:
+    app: grafana
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - access: proxy
+        basicAuth: false
+        editable: true
+        isDefault: true
+        name: phlare
+        type: phlare
+        uid: phlare
+        url: http://phlare:4100
+        version: 1

@@ -1,0 +1,91 @@
+# kubectl apply -f phlare-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: phlare
+  name: phlare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phlare
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: phlare
+    spec:
+      containers:
+        - args:
+            - -config.file=/etc/phlare/config.yaml
+          image: grafana/phlare:latest
+          name: phlare
+          ports:
+            - containerPort: 4100
+          volumeMounts:
+            - mountPath: /etc/phlare/
+              name: config
+            - mountPath: /data
+              name: data
+      restartPolicy: Always
+      volumes:
+        - name: config
+          configMap:
+            name: phlare
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: phlare
+  name: phlare
+spec:
+  ports:
+    - name: "4100"
+      port: 4100
+      targetPort: 4100
+  selector:
+    app: phlare
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phlare
+data:
+  config.yaml: |
+    scrape_configs:
+      - job_name: "phlare"
+        scrape_interval: "15s"
+        static_configs:
+          - targets: ["phlare:4100"]
+      - job_name: "grafana"
+        scrape_interval: "15s"
+        static_configs:
+          - targets: ["grafana:6060"]
+      - job_name: "python"
+        scrape_interval: "15s"
+        static_configs:
+          - targets: ["python-low:8081", "python-high:8081"]
+        profiling_config:
+          pprof_config:
+            block: { enabled: false }
+            goroutine: { enabled: false }
+            mutex: { enabled: false }
+            memory:
+              path: /debug/pprof/heap
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi

@@ -1,0 +1,76 @@
+# kubectl apply -f python-deploy.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: python
+    instance: low
+  name: python-low
+spec:
+  containers:
+  - image: martinheinz/python-phlare
+    name: python
+    env:
+      - name: INSTANCE
+        value: "low"
+      - name: CPU_LOAD
+        value: "500"
+      - name: MEMORY_LOAD
+        value: "500"
+      - name: LOAD_TYPE
+        value: "CPU"  # or MEMORY
+    ports:
+      - containerPort: 8081
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: python
+    instance: high
+  name: python-high
+spec:
+  containers:
+  - image: martinheinz/python-phlare
+    name: python
+    env:
+      - name: INSTANCE
+        value: "high"
+      - name: CPU_LOAD
+        value: "750"
+      - name: MEMORY_LOAD
+        value: "1000"
+      - name: LOAD_TYPE
+        value: "CPU"  # or MEMORY
+    ports:
+      - containerPort: 8081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: python
+  name: python-low
+spec:
+  ports:
+    - name: "8081"
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: python
+    instance: low
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: python
+  name: python-high
+spec:
+  ports:
+    - name: "8081"
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: python
+    instance: high
